@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>網上鋼片琴 (Glockenspiel)</title>
+    <style>
+        :root {
+            --case-color: #ffd54f;
+            --case-shadow: #d4ac0d;
+            --strip-color: #2c3e50;
+            --accidental-color: #4a76a8;
+            --peg-color: #f1c40f;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        p.instruction {
+            color: #666;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+
+        .scroll-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        /* 為了在寬螢幕置中，窄螢幕可滑動 */
+        @media (min-width: 900px) {
+            .scroll-wrapper {
+                justify-content: center;
+            }
+        }
+
+        .glockenspiel-case {
+            background-color: var(--case-color);
+            padding: 40px 30px;
+            border-radius: 40px;
+            box-shadow: 
+                inset 0 15px 25px rgba(255, 255, 255, 0.4),
+                inset 0 -15px 25px rgba(0, 0, 0, 0.15),
+                0 20px 40px rgba(0, 0, 0, 0.3);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .handle {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 40px;
+            background-color: var(--case-color);
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            z-index: -1;
+        }
+
+        .handle-hole {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 25px;
+            background-color: #222;
+            border-radius: 12px;
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.5);
+        }
+
+        .keyboard {
+            position: relative;
+            width: 790px; /* 16 keys * 50px pitch - 10px gap */
+            height: 380px;
+        }
+
+        /* 黑色海綿墊條 */
+        .strip {
+            position: absolute;
+            width: 100%;
+            height: 12px;
+            background-color: var(--strip-color);
+            border-radius: 6px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.6);
+            z-index: 1;
+        }
+        .strip.top-1 { top: 25px; }
+        .strip.top-2 { top: 110px; }
+        .strip.bottom-1 { bottom: 130px; }
+        .strip.bottom-2 { bottom: 25px; }
+
+        .key {
+            position: absolute;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 
+                2px 6px 10px rgba(0,0,0,0.4), 
+                inset 1px 1px 2px rgba(255,255,255,0.5),
+                inset -1px -2px 4px rgba(0,0,0,0.2);
+            z-index: 2;
+            transition: transform 0.05s, box-shadow 0.05s, filter 0.05s;
+            background-image: linear-gradient(to bottom, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 15%, rgba(0,0,0,0) 85%, rgba(0,0,0,0.15) 100%);
+        }
+
+        .key.active {
+            transform: translateY(3px) scale(0.98);
+            box-shadow: 
+                1px 2px 4px rgba(0,0,0,0.4), 
+                inset 1px 1px 2px rgba(255,255,255,0.4);
+            filter: brightness(1.1);
+        }
+
+        .key.natural {
+            width: 40px;
+            height: 180px;
+            bottom: 0;
+        }
+
+        .key.accidental {
+            width: 34px;
+            height: 150px;
+            top: 0;
+            background-color: var(--accidental-color);
+            color: #eee;
+        }
+
+        .peg {
+            width: 10px;
+            height: 10px;
+            background-color: var(--peg-color);
+            border-radius: 50%;
+            margin: 15px 0;
+            box-shadow: 
+                inset -1px -1px 3px rgba(0,0,0,0.4), 
+                1px 1px 2px rgba(255,255,255,0.8);
+        }
+
+        .label {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 25px;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        .accidental .label {
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+
+        /* 按鈕區 */
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        #demoBtn {
+            background-color: #9b59b6;
+        }
+
+        #demoBtn:hover:not(:disabled) {
+            background-color: #8e44ad;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>網上鋼片琴</h1>
+    <p class="instruction">點擊或觸控琴鍵即可演奏。第一音為 G。</p>
+
+    <div class="controls">
+        <button id="recordBtn">🔴 錄音</button>
+        <button id="playBtn" disabled>▶️ 播放</button>
+        <button id="demoBtn">🎵 示範：小星星</button>
+    </div>
+
+    <div class="scroll-wrapper">
+        <div class="glockenspiel-case">
+            <div class="handle"></div>
+            <div class="handle-hole"></div>
+            
+            <div class="keyboard" id="keyboard">
+                <!-- 黑色的緩衝海綿條 -->
+                <div class="strip top-1"></div>
+                <div class="strip top-2"></div>
+                <div class="strip bottom-1"></div>
+                <div class="strip bottom-2"></div>
+                <!-- 琴鍵將由 JavaScript 動態生成 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 音訊上下文
+        let audioCtx;
+
+        // 錄音與回放狀態變數
+        let isRecording = false;
+        let isPlaying = false;
+        let recordedNotes = [];
+        let recordingStartTime = 0;
+        let playbackTimeouts = [];
+
+        // 初始化音訊 (必須在使用者互動後執行)
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // 計算音頻頻率 (A4 = 440Hz)
+        function getFreq(noteString) {
+            const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            // 解析音符與八度，例如 "G5", "C#6"
+            const note = noteString.match(/[A-Z]#?/)[0];
+            const octave = parseInt(noteString.match(/\d/)[0]);
+            
+            const halfSteps = notes.indexOf(note) + (octave - 4) * 12 - 9;
+            return 440 * Math.pow(2, halfSteps / 12);
+        }
+
+        // 播放聲音函數 (模擬鋼片琴清脆的聲音)
+        function playNote(noteString, element) {
+            initAudio();
+            const freq = getFreq(noteString);
+            const t = audioCtx.currentTime;
+
+            // 錄音邏輯
+            if (isRecording && !isPlaying) {
+                if (recordedNotes.length === 0) {
+                    recordingStartTime = t; // 以第一顆音作為時間起點
+                }
+                recordedNotes.push({ note: noteString, time: t - recordingStartTime });
+            }
+
+            // 主要音色 (正弦波，純淨的鐘聲)
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t);
+
+            // 敲擊的泛音 (模擬敲擊金屬的瞬間高頻)
+            const strikeOsc = audioCtx.createOscillator();
+            strikeOsc.type = 'square';
+            strikeOsc.frequency.setValueAtTime(freq * 3.14, t); 
+
+            // 音量控制節點
+            const masterGain = audioCtx.createGain();
+            const strikeGain = audioCtx.createGain();
+
+            // 主音色包絡線 (銳利的起音，長尾音)
+            masterGain.gain.setValueAtTime(0, t);
+            masterGain.gain.linearRampToValueAtTime(0.8, t + 0.01);
+            masterGain.gain.exponentialRampToValueAtTime(0.001, t + 2.0);
+
+            // 敲擊聲包絡線 (極短促)
+            strikeGain.gain.setValueAtTime(0, t);
+            strikeGain.gain.linearRampToValueAtTime(0.2, t + 0.005);
+            strikeGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+            // 連接節點
+            osc.connect(masterGain);
+            strikeOsc.connect(strikeGain);
+            masterGain.connect(audioCtx.destination);
+            strikeGain.connect(audioCtx.destination);
+
+            // 開始與停止
+            osc.start(t);
+            strikeOsc.start(t);
+            osc.stop(t + 2.0);
+            strikeOsc.stop(t + 0.1);
+
+            // 如果沒有傳入 element (例如回放時)，自動尋找對應的琴鍵
+            if (!element) {
+                element = document.querySelector(`[data-note="${noteString}"]`);
+            }
+
+            // 視覺回饋
+            if (element) {
+                element.classList.add('active');
+                setTimeout(() => {
+                    element.classList.remove('active');
+                }, 100);
+            }
+        }
+
+        // --- 介面渲染資料 ---
+
+        // 琴鍵間距設定
+        const keyWidth = 40;
+        const gap = 10;
+        const pitch = keyWidth + gap; // 50px
+        const accidentalWidth = 34;
+
+        // 下排自然音 (16個鍵，起點為 G5)
+        const naturals = [
+            { note: 'G5', label: 'G', color: '#e74c3c' }, // 紅
+            { note: 'A5', label: 'A', color: '#c0392b' }, // 暗紅
+            { note: 'B5', label: 'B', color: '#f1948a' }, // 粉紅
+            { note: 'C6', label: 'C', color: '#9b59b6' }, // 紫
+            { note: 'D6', label: 'D', color: '#3498db' }, // 藍
+            { note: 'E6', label: 'E', color: '#2ecc71' }, // 綠
+            { note: 'F6', label: 'F', color: '#f1c40f' }, // 黃
+            { note: 'G6', label: 'G', color: '#e67e22' }, // 橙
+            { note: 'A6', label: 'A', color: '#c0392b' }, // 暗紅
+            { note: 'B6', label: 'B', color: '#f1948a' }, // 粉紅
+            { note: 'C7', label: 'C', color: '#9b59b6' }, // 紫
+            { note: 'D7', label: 'D', color: '#3498db' }, // 藍
+            { note: 'E7', label: 'E', color: '#2ecc71' }, // 綠
+            { note: 'F7', label: 'F', color: '#f1c40f' }, // 黃
+            { note: 'G7', label: 'G', color: '#e74c3c' }, // 紅
+            { note: 'A7', label: 'A', color: '#c0392b' }  // 暗紅
+        ];
+
+        // 上排半音 (相對於下排索引的位置)
+        const accidentals = [
+            { index: 0, note: 'G#5', label: '#G' },
+            { index: 1, note: 'A#5', label: '#A' },
+            // 2(B)與3(C)之間無半音
+            { index: 3, note: 'C#6', label: '#C' },
+            { index: 4, note: 'D#6', label: '#D' },
+            // 5(E)與6(F)之間無半音
+            { index: 6, note: 'F#6', label: '#F' },
+            { index: 7, note: 'G#6', label: '#G' },
+            { index: 8, note: 'A#6', label: '#A' },
+            // 9(B)與10(C)之間無半音
+            { index: 10, note: 'C#7', label: '#C' },
+            { index: 11, note: 'D#7', label: '#D' },
+            // 12(E)與13(F)之間無半音
+            { index: 13, note: 'F#7', label: '#F' },
+            { index: 14, note: 'G#7', label: '#G' }
+        ];
+
+        const keyboardEl = document.getElementById('keyboard');
+
+        // 生成 DOM 元素
+        function createKey(data, isNatural, xPos) {
+            const key = document.createElement('div');
+            key.className = `key ${isNatural ? 'natural' : 'accidental'}`;
+            key.style.left = `${xPos}px`;
+            key.dataset.note = data.note; // 加入 data 屬性供回放時尋找
+            
+            if (isNatural) {
+                key.style.backgroundColor = data.color;
+            }
+
+            // 加入上下釘子(pegs)與標籤
+            const topPeg = document.createElement('div');
+            topPeg.className = 'peg';
+            const bottomPeg = document.createElement('div');
+            bottomPeg.className = 'peg';
+            
+            const label = document.createElement('div');
+            label.className = 'label';
+            label.innerText = data.label;
+            
+            if (isNatural) {
+                key.appendChild(topPeg);
+                key.appendChild(label);
+                key.appendChild(bottomPeg);
+            } else {
+                key.appendChild(topPeg);
+                key.appendChild(bottomPeg);
+                // 半音標籤放中間偏下
+                label.style.position = 'absolute';
+                label.style.bottom = '15px';
+                key.appendChild(label);
+            }
+
+            // 綁定事件
+            key.addEventListener('mousedown', (e) => {
+                e.preventDefault(); // 防止選取文字
+                playNote(data.note, key);
+            });
+            
+            key.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // 阻擋預設滾動，實現無延遲觸控
+                playNote(data.note, key);
+            }, { passive: false });
+
+            return key;
+        }
+
+        // 渲染下排琴鍵
+        naturals.forEach((data, i) => {
+            const xPos = i * pitch;
+            keyboardEl.appendChild(createKey(data, true, xPos));
+        });
+
+        // 渲染上排半音鍵 (定位在兩個自然鍵之間)
+        accidentals.forEach((data) => {
+            // 中心點 = 左方自然鍵的X + 鍵寬 + 間隙/2
+            const center = data.index * pitch + keyWidth + (gap / 2);
+            // 左邊界 = 中心點 - 半音鍵寬/2
+            const xPos = center - (accidentalWidth / 2);
+            keyboardEl.appendChild(createKey(data, false, xPos));
+        });
+
+        // 錄音與回放控制邏輯
+        const recordBtn = document.getElementById('recordBtn');
+        const playBtn = document.getElementById('playBtn');
+        const demoBtn = document.getElementById('demoBtn');
+
+        // 小星星示範樂曲資料生成
+        const twinkleData = [
+            ['C6', 1], ['C6', 1], ['G6', 1], ['G6', 1], ['A6', 1], ['A6', 1], ['G6', 2],
+            ['F6', 1], ['F6', 1], ['E6', 1], ['E6', 1], ['D6', 1], ['D6', 1], ['C6', 2],
+            ['G6', 1], ['G6', 1], ['F6', 1], ['F6', 1], ['E6', 1], ['E6', 1], ['D6', 2],
+            ['G6', 1], ['G6', 1], ['F6', 1], ['F6', 1], ['E6', 1], ['E6', 1], ['D6', 2],
+            ['C6', 1], ['C6', 1], ['G6', 1], ['G6', 1], ['A6', 1], ['A6', 1], ['G6', 2],
+            ['F6', 1], ['F6', 1], ['E6', 1], ['E6', 1], ['D6', 1], ['D6', 1], ['C6', 2]
+        ];
+        const demoTwinkle = [];
+        let currentTime = 0;
+        const beatLength = 0.5; // 每拍 0.5 秒
+        twinkleData.forEach(([note, beats]) => {
+            demoTwinkle.push({ note, time: currentTime });
+            currentTime += beats * beatLength;
+        });
+
+        recordBtn.addEventListener('click', () => {
+            if (isPlaying) return; // 播放中不允許錄音
+            
+            isRecording = !isRecording;
+            if (isRecording) {
+                recordedNotes = []; // 清空舊錄音
+                recordBtn.innerText = '⏹️ 停止錄音';
+                recordBtn.style.backgroundColor = '#e74c3c'; // 錄音中變紅色
+                playBtn.disabled = true;
+                demoBtn.disabled = true;
+            } else {
+                recordBtn.innerText = '🔴 錄音';
+                recordBtn.style.backgroundColor = ''; // 恢復原色
+                playBtn.disabled = recordedNotes.length === 0;
+                demoBtn.disabled = false;
+            }
+        });
+
+        // 通用的播放序列函數
+        function playSequence(sequence, buttonEl, playingText, originalText) {
+            if (isRecording || sequence.length === 0 || isPlaying) return;
+            
+            isPlaying = true;
+            buttonEl.innerText = playingText;
+            recordBtn.disabled = true;
+            playBtn.disabled = true;
+            demoBtn.disabled = true;
+
+            let maxDelay = 0;
+            playbackTimeouts.forEach(clearTimeout); // 清除可能殘留的計時器
+            playbackTimeouts = [];
+
+            // 依序設定定時器播放每個音符
+            sequence.forEach(record => {
+                const delay = record.time * 1000;
+                if (delay > maxDelay) maxDelay = delay;
+                
+                const timeoutId = setTimeout(() => {
+                    playNote(record.note, null);
+                }, delay);
+                playbackTimeouts.push(timeoutId);
+            });
+
+            // 播放結束後恢復按鈕狀態
+            setTimeout(() => {
+                isPlaying = false;
+                buttonEl.innerText = originalText;
+                recordBtn.disabled = false;
+                playBtn.disabled = recordedNotes.length === 0;
+                demoBtn.disabled = false;
+                playbackTimeouts = [];
+            }, maxDelay + 2000); // 加上最後一個音的餘音時間
+        }
+
+        playBtn.addEventListener('click', () => {
+            playSequence(recordedNotes, playBtn, '⏳ 播放中...', '▶️ 播放');
+        });
+
+        demoBtn.addEventListener('click', () => {
+            playSequence(demoTwinkle, demoBtn, '⏳ 示範中...', '🎵 示範：小星星');
+        });
+
+    </script>
+</body>
+</html>
